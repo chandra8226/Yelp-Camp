@@ -10,6 +10,8 @@ const session = require('express-session');
 const flash = require('connect-flash');
 const passport = require('passport');
 const localStrategy = require('passport-local');
+const mongoSanitize = require('express-mongo-sanitize');
+const helmet = require('helmet');
 
 const User = require('./models/user');
 
@@ -35,15 +37,25 @@ app.use(methodOverride('_method'));
 app.use(morgan('tiny'));
 app.use(express.static(path.join(__dirname, 'public')));
 const sessionConfig = {
+  name: 'session',
   secret: 'thisshouldbeabettersecret',
   resave: false,
   saveUninitialized: true,
   cookie: {
-    secure: false,
+    httpOnly: true,
+    // secure: true,
+    expires: Date.now() + 1000 * 60 * 60 * 24 * 7,
+    maxAge: 1000 * 60 * 60 * 24 * 7,
   },
 };
 app.use(session(sessionConfig));
 app.use(flash());
+app.use(mongoSanitize());
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+  })
+);
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -56,7 +68,6 @@ app.use((req, res, next) => {
   if (!['/login', '/'].includes(req.originalUrl)) {
     req.session.returnTo = req.originalUrl;
   }
-  console.log(req.session);
   res.locals.currentUser = req.user;
   res.locals.success = req.flash('success');
   res.locals.error = req.flash('error');
